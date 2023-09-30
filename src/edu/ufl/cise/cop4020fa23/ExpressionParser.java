@@ -90,26 +90,48 @@ public class ExpressionParser implements IParser {
 
 	/* *****************************  MOKSH ***************************** */
 
-	// REPLACE THIS CODE
+	// match the expected kind and move to the next token
+	private void match(Kind expectedKind) throws LexicalException, SyntaxException {
+		if (token.kind() == expectedKind) {
+			try {
+				token = lexer.next();
+			} catch (LexicalException e) {
+				throw new LexicalException(token.sourceLocation(), "Lexical error while trying to match " + expectedKind);
+			}
+		} else {
+			throw new SyntaxException(token.sourceLocation(), "Expected " + expectedKind + " but found " + token.kind());
+		}
+	}
+
+	// Expr ::=  ConditionalExpr | LogicalOrExpr
 	private Expr expr() throws PLCCompilerException {
-		IToken firstToken = token;
-		throw new UnsupportedOperationException("THE PARSER HAS NOT BEEN IMPLEMENTED YET");
+		if (token.kind() == Kind.QUESTION) {
+			return conditionalExpr();
+		} else {
+			return logicalOrExpr();
+		}
 	}
 
 
+	// ConditionalExpr ::=  ?  Expr  :  Expr  :  Expr
+	private ConditionalExpr conditionalExpr() throws PLCCompilerException {
+		IToken firstToken = token;
+		match(Kind.QUESTION);
+		Expr condition = expr();
+		match(Kind.RARROW);
+		Expr trueExpr = expr();
+		match(Kind.COMMA);
+		Expr falseExpr = expr();
+		return new ConditionalExpr(firstToken, condition, trueExpr, falseExpr);
+	}
 
+	// LogicalOrExpr ::= LogicalAndExpr (    (   |   |   ||   ) LogicalAndExpr)*
 
-	// Expr ::=  ConditionalExpr | LogicalOrExpr
-
-
-
-    // ConditionalExpr ::=  ?  Expr  :  Expr  :  Expr
 
 
 	// LogicalAndExpr ::=  ComparisonExpr ( (   &   |  &&   )  ComparisonExpr)*
 
 
-	// LogicalOrExpr ::= LogicalAndExpr (    (   |   |   ||   ) LogicalAndExpr)*
 
 
 	/* *****************************  Daniel  ***************************** */
