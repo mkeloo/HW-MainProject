@@ -125,12 +125,33 @@ public class ExpressionParser implements IParser {
 		return new ConditionalExpr(firstToken, condition, trueExpr, falseExpr);
 	}
 
-	// LogicalOrExpr ::= LogicalAndExpr (    (   |   |   ||   ) LogicalAndExpr)*
-
-
-
 	// LogicalAndExpr ::=  ComparisonExpr ( (   &   |  &&   )  ComparisonExpr)*
+	private Expr logicalAndExpr() throws PLCCompilerException {
+		Expr left = comparisonExpr();
 
+		while (token.kind() == Kind.BITAND || token.kind() == Kind.AND) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr right = comparisonExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
+
+
+
+	// LogicalOrExpr ::= LogicalAndExpr (    (   |   |   ||   ) LogicalAndExpr)*
+	private Expr logicalOrExpr() throws PLCCompilerException {
+		Expr left = logicalAndExpr();
+
+		while (token.kind() == Kind.OR || token.kind() == Kind.OR) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr right = logicalAndExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
 
 
 
