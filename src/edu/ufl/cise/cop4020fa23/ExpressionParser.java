@@ -158,18 +158,69 @@ public class ExpressionParser implements IParser {
 	/* *****************************  Daniel  ***************************** */
 
 	// ComparisonExpr ::= PowExpr ( (< | > | == | <= | >=) PowExpr)*
+	private Expr comparisonExpr() throws PLCCompilerException {
+		Expr left = powExpr();
 
+		while (Arrays.asList(Kind.LT, Kind.GT, Kind.EQ, Kind.LE, Kind.GE).contains(token.kind())) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr right = powExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
 
 	// PowExpr ::= AdditiveExpr ** PowExpr |   AdditiveExpr
+	private Expr powExpr() throws PLCCompilerException {
+		Expr left = additiveExpr();
 
+		if (token.kind() == Kind.EXP) {
+			IToken opToken = token;
+			match(Kind.EXP);
+			Expr right = powExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
 
 	// AdditiveExpr ::= MultiplicativeExpr ( ( + | -  ) MultiplicativeExpr )*
+	private Expr additiveExpr() throws PLCCompilerException {
+		Expr left = multiplicativeExpr();
 
+		while (token.kind() == Kind.PLUS || token.kind() == Kind.MINUS) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr right = multiplicativeExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
 
 	// MultiplicativeExpr ::= UnaryExpr (( * |  /  |  % ) UnaryExpr)*
+	private Expr multiplicativeExpr() throws PLCCompilerException {
+		Expr left = unaryExpr();
 
+		while (token.kind() == Kind.TIMES || token.kind() == Kind.DIV || token.kind() == Kind.MOD) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr right = unaryExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
 
 	// UnaryExpr ::=  ( ! | - | length | width) UnaryExpr  |  UnaryExprPostfix
+	private Expr unaryExpr() throws PLCCompilerException {
+		if (token.kind() == Kind.BANG || token.kind() == Kind.MINUS ||
+				token.kind() == Kind.RES_width || token.kind() == Kind.RES_height) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr expression = unaryExpr();
+			return new UnaryExpr(token, opToken, expression);
+		} else {
+			return postfixExpr();
+		}
+	}
 
 
 	/* *****************************  Moksh  ***************************** */
