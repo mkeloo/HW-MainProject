@@ -25,19 +25,7 @@ import static edu.ufl.cise.cop4020fa23.Kind.CONST;
 
 import java.util.Arrays;
 
-import edu.ufl.cise.cop4020fa23.ast.AST;
-import edu.ufl.cise.cop4020fa23.ast.BinaryExpr;
-import edu.ufl.cise.cop4020fa23.ast.ChannelSelector;
-import edu.ufl.cise.cop4020fa23.ast.ConditionalExpr;
-import edu.ufl.cise.cop4020fa23.ast.ConstExpr;
-import edu.ufl.cise.cop4020fa23.ast.ExpandedPixelExpr;
-import edu.ufl.cise.cop4020fa23.ast.Expr;
-import edu.ufl.cise.cop4020fa23.ast.IdentExpr;
-import edu.ufl.cise.cop4020fa23.ast.NumLitExpr;
-import edu.ufl.cise.cop4020fa23.ast.PixelSelector;
-import edu.ufl.cise.cop4020fa23.ast.PostfixExpr;
-import edu.ufl.cise.cop4020fa23.ast.StringLitExpr;
-import edu.ufl.cise.cop4020fa23.ast.UnaryExpr;
+import edu.ufl.cise.cop4020fa23.ast.*;
 import edu.ufl.cise.cop4020fa23.exceptions.LexicalException;
 import edu.ufl.cise.cop4020fa23.exceptions.PLCCompilerException;
 import edu.ufl.cise.cop4020fa23.exceptions.SyntaxException;
@@ -226,9 +214,64 @@ public class ExpressionParser implements IParser {
 	/* *****************************  Moksh  ***************************** */
 
 	// UnaryExprPostfix::= PrimaryExpr (PixelSelector | ε ) (ChannelSelector | ε )
+	private Expr postfixExpr() throws PLCCompilerException {
+		Expr expression = primaryExpr();
+		PixelSelector pixelSelector = null;
+		ChannelSelector channelSelector = null;
 
+		if (token.kind() == Kind.LSQUARE) {
+			pixelSelector = pixelSelector();
+		}
+		if (token.kind() == Kind.COLON) {
+			channelSelector = channelSelector();
+		}
+		if (pixelSelector != null || channelSelector != null) {
+			return new PostfixExpr(token, expression, pixelSelector, channelSelector);
+		}
+		return expression;
+	}
 
-    // PrimaryExpr ::=STRING_LIT | NUM_LIT |  IDENT | ( Expr ) | Z
+	// PrimaryExpr ::=STRING_LIT | NUM_LIT |  IDENT | ( Expr ) | Z
+	private Expr primaryExpr() throws PLCCompilerException {
+		switch (token.kind()) {
+			case STRING_LIT -> {
+				StringLitExpr stringLit = new StringLitExpr(token);
+				match(STRING_LIT);
+				return stringLit;
+			}
+			case NUM_LIT -> {
+				NumLitExpr numLit = new NumLitExpr(token);
+				match(NUM_LIT);
+				return numLit;
+			}
+			case IDENT -> {
+				if ("true".equals(token.text()) || "false".equals(token.text())) {
+					BooleanLitExpr booleanLit = new BooleanLitExpr(token);
+					match(IDENT);
+					return booleanLit;
+				} else {
+					IdentExpr ident = new IdentExpr(token);
+					match(IDENT);
+					return ident;
+				}
+			}
+			case LPAREN -> {
+				match(LPAREN);
+				Expr expression = expr();
+				match(RPAREN);
+				return expression;
+			}
+			case CONST -> {
+				ConstExpr constExpr = new ConstExpr(token);
+				match(CONST);
+				return constExpr;
+			}
+			case LSQUARE -> {
+				return expandedPixelExpr();
+			}
+			default -> throw new SyntaxException(token.sourceLocation(), "Expected token of kind ...");
+		}
+	}
 
 
 	/* *****************************  Daniel  ***************************** */

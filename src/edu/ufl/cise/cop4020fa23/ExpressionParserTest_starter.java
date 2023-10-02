@@ -535,6 +535,78 @@ class ExpressionParserTest_starter {
 
 	/* *****************************  Moksh  ***************************** */
 
+	@Test
+	void test39() throws PLCCompilerException {
+		String input = """
+            a - b - c
+            """;
+		AST ast = getAST(input);
+		checkBinaryExpr(ast, Kind.MINUS);
+		checkBinaryExpr(((BinaryExpr) ast).getLeftExpr(), Kind.MINUS);
+		checkIdentExpr(((BinaryExpr) ((BinaryExpr) ast).getLeftExpr()).getLeftExpr(), "a");
+		checkIdentExpr(((BinaryExpr) ((BinaryExpr) ast).getLeftExpr()).getRightExpr(), "b");
+		checkIdentExpr(((BinaryExpr) ast).getRightExpr(), "c");
+	}
+
+	@Test
+	void test40() throws PLCCompilerException {
+		String input = """
+            (a + b) * c
+            """;
+		AST ast = getAST(input);
+		checkBinaryExpr(ast, Kind.TIMES);
+		checkBinaryExpr(((BinaryExpr) ast).getLeftExpr(), Kind.PLUS);
+		checkIdentExpr(((BinaryExpr) ((BinaryExpr) ast).getLeftExpr()).getLeftExpr(), "a");
+		checkIdentExpr(((BinaryExpr) ((BinaryExpr) ast).getLeftExpr()).getRightExpr(), "b");
+		checkIdentExpr(((BinaryExpr) ast).getRightExpr(), "c");
+	}
+
+
+	@Test
+	void test41() throws PLCCompilerException {
+		String input = """
+            "hello" + "world"
+            """;
+		AST ast = getAST(input);
+		checkBinaryExpr(ast, Kind.PLUS);
+		checkStringLitExpr(((BinaryExpr) ast).getLeftExpr(), "hello");
+		checkStringLitExpr(((BinaryExpr) ast).getRightExpr(), "world");
+	}
+
+//	@Test
+//	void test42() throws PLCCompilerException {
+//		String input = """
+//            a ? b : c
+//            """;
+//		AST ast = getAST(input);
+//		checkConditionalExpr(ast);
+//		checkIdentExpr(((ConditionalExpr) ast).getGuardExpr(), "a");
+//		checkIdentExpr(((ConditionalExpr) ast).getTrueExpr(), "b");
+//		checkIdentExpr(((ConditionalExpr) ast).getFalseExpr(), "c");
+//	}
+
+
+	@Test
+	void test43() throws PLCCompilerException {
+		String input = """
+            "unclosed string
+            """;
+		assertThrows(LexicalException.class, () -> {
+			@SuppressWarnings("unused")
+			AST ast = getAST(input);
+		});
+	}
+
+	@Test
+	void test44() throws PLCCompilerException {
+		String input = """
+            (a + b
+            """;
+		assertThrows(SyntaxException.class, () -> {
+			@SuppressWarnings("unused")
+			AST ast = getAST(input);
+		});
+	}
 
 
 
