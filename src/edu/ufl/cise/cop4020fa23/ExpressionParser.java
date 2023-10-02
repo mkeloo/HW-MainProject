@@ -234,12 +234,36 @@ public class ExpressionParser implements IParser {
 	/* *****************************  Daniel  ***************************** */
 
 	// PixelSelector  ::= [ Expr , Expr ]
-
+	private PixelSelector pixelSelector() throws PLCCompilerException {
+		match(LSQUARE);
+		Expr xExpr = expr();
+		match(COMMA);
+		Expr yExpr = expr();
+		match(RSQUARE);
+		return new PixelSelector(token, xExpr, yExpr);
+	}
 
 	// ChannelSelector ::= : red | : green | : blue
-
+	private ChannelSelector channelSelector() throws PLCCompilerException {
+		match(COLON);
+		IToken channelToken = token;
+		if (channelToken.kind() == RES_red || channelToken.kind() == RES_green || channelToken.kind() == RES_blue) {
+			match(channelToken.kind());
+			return new ChannelSelector(token, channelToken);
+		} else {
+			throw new SyntaxException(token.sourceLocation(), "Expected red, green, or blue after colon for ChannelSelector.");
+		}
+	}
 
 	// ExpandedPixel ::= [ Expr , Expr , Expr ]
-
-
+	private ExpandedPixelExpr expandedPixelExpr() throws PLCCompilerException {
+		match(LSQUARE);
+		Expr e1 = expr();
+		match(COMMA);
+		Expr e2 = expr();
+		match(COMMA);
+		Expr e3 = expr();
+		match(RSQUARE);
+		return new ExpandedPixelExpr(token, e1, e2, e3);
+	}
 }
