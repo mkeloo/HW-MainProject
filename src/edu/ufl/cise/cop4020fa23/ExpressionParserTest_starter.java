@@ -463,7 +463,75 @@ class ExpressionParserTest_starter {
 
 	/* *****************************  Daniel  ***************************** */
 
+	// Additional Test Cases:
 
+	@Test
+	void test33() throws PLCCompilerException {
+		String input = """
+            true
+            """;
+		AST ast = getAST(input);
+		checkBooleanLitExpr(ast, true);
+	}
+
+	@Test
+	void test34() throws PLCCompilerException {
+		String input = """
+            false
+            """;
+		AST ast = getAST(input);
+		checkBooleanLitExpr(ast, false);
+	}
+
+	@Test
+	void test35() throws PLCCompilerException {
+		String input = """
+            a:b
+            """;
+		assertThrows(SyntaxException.class, () -> {
+			@SuppressWarnings("unused")
+			AST ast = getAST(input);
+		});
+	}
+
+	@Test
+	void test36() throws PLCCompilerException {
+		String input = """
+            a[3,4]:red
+            """;
+		AST ast = getAST(input);
+		checkPostfixExpr(ast, true, true);
+		Expr v0 = ((PostfixExpr) ast).primary();
+		checkIdentExpr(v0, "a");
+		PixelSelector v1 = ((PostfixExpr) ast).pixel();
+		checkNumLitExpr(v1.xExpr(), 3);
+		checkNumLitExpr(v1.yExpr(), 4);
+		checkChannelSelector(((PostfixExpr) ast).channel(), Kind.RES_red);
+	}
+
+	@Test
+	void test37() throws PLCCompilerException {
+		String input = """
+            5 / 0
+            """;
+		AST ast = getAST(input);
+		checkBinaryExpr(ast, Kind.DIV);
+		checkNumLitExpr(((BinaryExpr) ast).getLeftExpr(), 5);
+		checkNumLitExpr(((BinaryExpr) ast).getRightExpr(), 0);
+	}
+
+	@Test
+	void test38() throws PLCCompilerException {
+		String input = """
+            a + b * c
+            """;
+		AST ast = getAST(input);
+		checkBinaryExpr(ast, Kind.PLUS);
+		checkIdentExpr(((BinaryExpr) ast).getLeftExpr(), "a");
+		checkBinaryExpr(((BinaryExpr) ast).getRightExpr(), Kind.TIMES);
+		checkIdentExpr(((BinaryExpr) ((BinaryExpr) ast).getRightExpr()).getLeftExpr(), "b");
+		checkIdentExpr(((BinaryExpr) ((BinaryExpr) ast).getRightExpr()).getRightExpr(), "c");
+	}
 
 	/* *****************************  Moksh  ***************************** */
 
