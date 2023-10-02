@@ -14,6 +14,8 @@ public class Lexer implements ILexer {
     private int pos = 0;
     private int startPos;
     private int line = 1;
+    private int columnPos = 1;
+
 
 
     private boolean reachedEOF = false;
@@ -121,14 +123,15 @@ public class Lexer implements ILexer {
         switch (ch) {
             case ' ', '\t', '\r' -> {
                 pos++;
+                columnPos++;
                 return null;
             }
             case '\n' -> {
                 line++;
+                columnPos = 1;
                 pos++;
                 return null;
             }
-
             case '#' -> {
                 if (chars[pos + 1] == '#') {
                     pos += 2;
@@ -308,7 +311,7 @@ public class Lexer implements ILexer {
                     return null;
                 } else {
                     SourceLocation errorLocation = new SourceLocation(line, startPos);
-                    throw new LexicalException(errorLocation, "Unrecognized token at position: " + startPos);
+                    throw new LexicalException(errorLocation, "Unreacognized token at position: " + startPos);
                 }
             }
         }
@@ -343,12 +346,31 @@ public class Lexer implements ILexer {
             state = State.START;
             return createToken(STRING_LIT, startPos, stringValue.length() + 2, chars);
         } else if (ch == '\0' || ch == '\n') {
-            throw new LexicalException(new SourceLocation(line, pos), "Unclosed string starting at position: " + startPos);
+            throw new LexicalException(new SourceLocation(line, pos), "unclosed string starting at position: " + startPos);
         }  else {
             pos++;
             return null;
         }
     }
+
+//    private IToken handleString(char ch) throws LexicalException {
+//        if (ch == '"') {
+//            String stringValue = new String(chars, startPos + 1, pos - startPos - 1);
+//            pos++;
+//            state = State.START;
+//            return createToken(STRING_LIT, startPos, stringValue.length() + 2, chars);
+//        } else if (ch == '\0') {
+//            throw new LexicalException(new SourceLocation(line, pos), "unclosed string starting at position: " + startPos);
+//        } else if (ch == '\n') {
+//            line++;
+//            pos++;
+//            throw new LexicalException(new SourceLocation(line, pos), "unclosed string starting at position: " + startPos);
+//        } else {
+//            pos++;
+//            return null;
+//        }
+//    }
+
 
 
     private IToken handleNumber(char ch) throws LexicalException {
@@ -464,11 +486,12 @@ public class Lexer implements ILexer {
     private IToken handleBitAnd(char ch) {
         IToken token;
         if (ch == '&') {
-            pos += 2;
-            token = createToken(Kind.AND, startPos, 2); // return AND for '&&'
+//            pos += 2;
+            pos++;
+            token = createToken(Kind.AND, startPos, 2);
         } else {
             pos++;
-            token = createToken(Kind.BITAND, startPos, 1); // return BITAND for a single '&'
+            token = createToken(Kind.BITAND, startPos, 1);
         }
         startPos = pos;
         state = State.START;
@@ -501,13 +524,20 @@ public class Lexer implements ILexer {
     }
 
 
+//    private IToken getiToken(Kind kind, int startPos, int length, char[] chars) {
+//        char[] value = Arrays.copyOfRange(chars, startPos, startPos + length);
+//        IToken token = new Token(kind, startPos, length, value, new SourceLocation(line, startPos));
+//        System.out.println("Token: " + kind + " and value: " + Arrays.toString(value) + " at position " + startPos);
+//        return token;
+//    }
+
     private IToken getiToken(Kind kind, int startPos, int length, char[] chars) {
         char[] value = Arrays.copyOfRange(chars, startPos, startPos + length);
-        IToken token = new Token(kind, startPos, length, value, new SourceLocation(line, startPos));
+        IToken token = new Token(kind, startPos, length, value, new SourceLocation(line, columnPos));
 //        System.out.println("Token: " + kind + " and value: " + Arrays.toString(value) + " at position " + startPos);
+        columnPos += length;
         return token;
     }
-
 
 
 //    private IToken createToken(Kind kind, int startPos, int length, char[] value) {
