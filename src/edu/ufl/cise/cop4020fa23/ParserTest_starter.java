@@ -709,6 +709,59 @@ class ParserTest_starter {
 
 //	/* *****************************  MOKSH  ***************************** */
 
+@Test
+void test15() throws PLCCompilerException {
+	String input = """
+			int main() <:
+				int a = 3 * 4;
+				string b = "Hello";
+				if (a > 10) -> <: write b; :>
+				fi;
+			:>
+			""";
+	AST ast = getAST(input);
+	Program p = checkProgram(ast, "int", "main");
+	Block programBlock = p.getBlock();
+	List<BlockElem> blockElemList = programBlock.getElems();
+	assertEquals(3, blockElemList.size());
+	Declaration decl1 = (Declaration) blockElemList.get(0);
+	checkNameDef(decl1.getNameDef(), "int", "a");
+	BinaryExpr be = checkBinaryExpr(decl1.getInitializer(), Kind.TIMES);
+	Expr leftExpr = be.getLeftExpr();
+	checkNumLitExpr(leftExpr, 3);
+	Expr rightExpr = be.getRightExpr();
+	checkNumLitExpr(rightExpr, 4);
+	Declaration decl2 = (Declaration) blockElemList.get(1);
+	checkNameDef(decl2.getNameDef(), "string", "b");
+	checkStringLitExpr(decl2.getInitializer(), "Hello");
+}
+
+
+	@Test
+	void test17() throws PLCCompilerException {
+		String input = """
+        pixel main() <:
+            pixel p;
+            p[2,3]:red = 255;
+        :>
+        """;
+		AST ast = getAST(input);
+		Program p = checkProgram(ast, "pixel", "main");
+		Block programBlock = p.getBlock();
+		List<BlockElem> blockElemList = programBlock.getElems();
+		assertEquals(2, blockElemList.size());
+		Declaration decl1 = (Declaration) blockElemList.get(0);
+		checkNameDef(decl1.getNameDef(), "pixel", "p");
+		AssignmentStatement assignStmt = (AssignmentStatement) blockElemList.get(1);
+		LValue lval = assignStmt.getlValue();
+		checkLValueName(lval, "p");
+		PixelSelector pxSel = lval.getPixelSelector();
+		checkNumLitExpr(pxSel.xExpr(), 2);
+		checkNumLitExpr(pxSel.yExpr(), 3);
+		checkChannelSelector(lval.getChannelSelector(), Kind.RES_red);
+		checkNumLitExpr(assignStmt.getE(), 255);
+	}
+
 
 
 
