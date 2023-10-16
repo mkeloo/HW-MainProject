@@ -369,6 +369,84 @@ public class Parser implements IParser {
 	/* *****************************  MOKSH  ***************************** */
 
 
+	// method to parse the Statement rule ::=>
+	// Statement::=
+	//       LValue = Expr |
+	//       write Expr |
+	//       do GuardedBlock [] GuardedBlock* od |
+	//      if GuardedBlock [] GuardedBlock* if |
+	//      ^ Expr |
+	//     BlockStatement |
+	private Statement statement() throws SyntaxException, PLCCompilerException {
+		if (isKind(Kind.IDENT)) {
+			LValue lvalue = lvalue();
+			match(Kind.ASSIGN);
+			Expr expr = expr();
+			return new AssignmentStatement(token, lvalue, expr);
+		}
+		else if (isKind(Kind.BLOCK_OPEN)) {
+			Block nestedBlock = block();
+			return new StatementBlock(token, nestedBlock);
+		}
+		else if (isKind(Kind.RES_write)) {
+			match(Kind.RES_write);
+			Expr expr = expr();
+			return new WriteStatement(token, expr);
+		}
+		else if (isKind(Kind.RETURN)) {
+			match(Kind.RETURN);
+			Expr expr = expr();
+			return new ReturnStatement(token, expr);
+		}
+		else if (isKind(Kind.RES_do)) {
+			return doStatement();
+		}
+		else if (isKind(Kind.RES_if)) {
+			return ifStatement();
+		}
+		else {
+			throw new PLCCompilerException("Unexpected token in statement: " + token.kind());
+		}
+	}
+
+
+	// Method to parse the DoStatement rule ::=> do GuardedBlock [] GuardedBlock* od
+	private Statement doStatement() throws SyntaxException, PLCCompilerException {
+		match(Kind.RES_do);
+		List<GuardedBlock> guardedBlocks = new ArrayList<>();
+		guardedBlocks.add(guardedBlock());
+		while (isKind(Kind.BOX)) {
+			match(Kind.BOX);
+			guardedBlocks.add(guardedBlock());
+		}
+		match(Kind.RES_od);
+		return new DoStatement(token, guardedBlocks);
+	}
+
+
+	// Method to parse the IfStatement rule ::=> if GuardedBlock [] GuardedBlock* fi
+	private IfStatement ifStatement() throws SyntaxException, PLCCompilerException {
+		match(Kind.RES_if);
+		List<GuardedBlock> guardedBlocks = new ArrayList<>();
+		guardedBlocks.add(guardedBlock());
+		while (isKind(Kind.BOX)) {
+			match(Kind.BOX);
+			guardedBlocks.add(guardedBlock());
+		}
+		match(Kind.RES_fi);
+		return new IfStatement(token, guardedBlocks);
+	}
+
+
+	// Method to parse the GuardedBlock rule ::=> GuardedBlock := Expr -> Block
+	private GuardedBlock guardedBlock() throws SyntaxException, PLCCompilerException {
+		Expr expr = expr();
+		match(Kind.RARROW);
+		Block block = block();
+		return new GuardedBlock(token, expr, block);
+	}
+
+
 
 
 	/* *****************************  Daniel  ***************************** */
