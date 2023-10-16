@@ -297,10 +297,83 @@ public class Parser implements IParser {
 	/* *****************************  MOKSH  ***************************** */
 
 
-
-	private AST program() throws PLCCompilerException {
-		throw new UnsupportedOperationException();
+	// helper kind method
+	private boolean isKind(Kind kind) {
+		return token.kind() == kind;
 	}
+
+	// Method to parse the Type rule ::=> Type ::= image | pixel | int | string | boolean | void
+	private IToken type() throws LexicalException, SyntaxException {
+		if (isKind(Kind.RES_image)) {
+			IToken typeToken = token;
+			match(Kind.RES_image);
+			return typeToken;
+		} else if (isKind(Kind.RES_pixel)) {
+			IToken typeToken = token;
+			match(Kind.RES_pixel);
+			return typeToken;
+		} else if (isKind(Kind.RES_int)) {
+			IToken typeToken = token;
+			match(Kind.RES_int);
+			return typeToken;
+		} else if (isKind(Kind.RES_string)) {
+			IToken typeToken = token;
+			match(Kind.RES_string);
+			return typeToken;
+		} else if (isKind(Kind.RES_boolean)) {
+			IToken typeToken = token;
+			match(Kind.RES_boolean);
+			return typeToken;
+		} else if (isKind(Kind.RES_void)) {
+			IToken typeToken = token;
+			match(Kind.RES_void);
+			return typeToken;
+		} else {
+			throw new SyntaxException(token.sourceLocation(), "expected type but got: " + token.kind());
+		}
+	}
+
+
+	// Method to parse the Program rule ::=> Program::= Type IDENT ( ParamList ) Block
+	public AST program() throws  PLCCompilerException {
+		if (isType(token)) {
+			IToken type = type();
+			IToken ident = match(Kind.IDENT);
+			match(Kind.LPAREN);
+			List<NameDef> paramList = paramList();
+			match(Kind.RPAREN);
+			Block block = block();
+			return new Program(token, type, ident, paramList, block);
+		}
+		// token = !type, then just parse an exper
+		else {
+			Expr e = expr();
+			return e;
+		}
+	}
+
+	// helper method for program() to chcek if the token is a type
+	private boolean isType(IToken token) {
+		return isKind(Kind.RES_image) || isKind(Kind.RES_pixel)
+				||  isKind(Kind.RES_int) ||  isKind(Kind.RES_string)
+				|| isKind(Kind.RES_boolean) || isKind(Kind.RES_void);
+	}
+
+
+
+	/* *****************************  Daniel  ***************************** */
+
+
+
+
+	/* *****************************  MOKSH  ***************************** */
+
+
+
+
+	/* *****************************  Daniel  ***************************** */
+
+
 
 
 
