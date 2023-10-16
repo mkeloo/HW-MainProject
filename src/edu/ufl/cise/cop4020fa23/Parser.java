@@ -296,7 +296,6 @@ public class Parser implements IParser {
 
 	/* *****************************  MOKSH  ***************************** */
 
-
 	// helper kind method
 	private boolean isKind(Kind kind) {
 		return token.kind() == kind;
@@ -358,15 +357,6 @@ public class Parser implements IParser {
 				||  isKind(Kind.RES_int) ||  isKind(Kind.RES_string)
 				|| isKind(Kind.RES_boolean) || isKind(Kind.RES_void);
 	}
-
-
-
-	/* *****************************  Daniel  ***************************** */
-
-
-
-
-	/* *****************************  MOKSH  ***************************** */
 
 
 	// method to parse the Statement rule ::=>
@@ -445,7 +435,6 @@ public class Parser implements IParser {
 		Block block = block();
 		return new GuardedBlock(token, expr, block);
 	}
-
 
 
 

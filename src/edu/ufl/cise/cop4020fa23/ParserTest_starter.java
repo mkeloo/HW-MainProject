@@ -764,13 +764,6 @@ void test15() throws PLCCompilerException {
 
 
 
-	//	/* *****************************  DANIEL  ***************************** */
-
-
-
-	//	/* *****************************  MOKSH  ***************************** */
-
-
 	@Test
 	void test22() throws PLCCompilerException {
 		String input = "a[2,3]";
