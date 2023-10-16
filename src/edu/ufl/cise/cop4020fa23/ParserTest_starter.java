@@ -794,6 +794,104 @@ void test15() throws PLCCompilerException {
 
 	//	/* *****************************  DANIEL  ***************************** */
 
+	@Test
+	void test18() throws PLCCompilerException {
+		String input = """
+			void main() <:
+				do a == 5 -> <: write a; :>
+				   [] b < 10 -> <: write b; :>
+				od;
+			:>
+			""";
+		AST ast = getAST(input);
+		Program p = checkProgram(ast, "void", "main");
+		Block programBlock = p.getBlock();
+		List<BlockElem> blockElems = programBlock.getElems();
+		assertEquals(1, blockElems.size());
+		DoStatement doStatmt = (DoStatement) blockElems.get(0);
+		List<GuardedBlock> guardedBlocks = doStatmt.getGuardedBlocks();
+		assertEquals(2, guardedBlocks.size());
+		GuardedBlock gb1 = guardedBlocks.get(0);
+		WriteStatement writeStmt1 = (WriteStatement) gb1.getBlock().getElems().get(0);
+		checkIdentExpr(writeStmt1.getExpr(), "a");
+		GuardedBlock gb2 = guardedBlocks.get(1);
+		WriteStatement writeStmt2 = (WriteStatement) gb2.getBlock().getElems().get(0);
+		checkIdentExpr(writeStmt2.getExpr(), "b");
+	}
 
+
+	@Test
+	void test19() throws PLCCompilerException {
+		String input = "3 + 4";
+		AST ast = getAST(input);
+		BinaryExpr be = checkBinaryExpr(ast, Kind.PLUS);
+		Expr leftExpr = be.getLeftExpr();
+		checkNumLitExpr(leftExpr, 3);
+	}
+
+	@Test
+	void test20() throws PLCCompilerException {
+		String input = "a[3,4]:red";
+		AST ast = getAST(input);
+		PostfixExpr pe = checkPostfixExpr(ast, true, true);
+
+	}
+
+
+	@Test
+	void test21() throws PLCCompilerException {
+		String input = "variableName";
+		AST ast = getAST(input);
+		checkIdentExpr(ast, "variableName");
+	}
+
+
+	@Test
+	void test24() throws PLCCompilerException {
+		String input = """
+			int arithmetic() <:
+				int a = 3 + 5;
+				int b = a - 2;
+				int c = a * b;
+			:>
+			""";
+		AST ast = getAST(input);
+		Program p = checkProgram(ast, "int", "arithmetic");
+		Block programBlock = p.getBlock();
+		List<BlockElem> blockElemList = programBlock.getElems();
+		assertEquals(3, blockElemList.size());
+		Declaration declA = (Declaration) blockElemList.get(0);
+		NameDef nameDefA = declA.getNameDef();
+		assertEquals("a", nameDefA.getName());
+		Declaration declB = (Declaration) blockElemList.get(1);
+		NameDef nameDefB = declB.getNameDef();
+		assertEquals("b", nameDefB.getName());
+		Declaration declC = (Declaration) blockElemList.get(2);
+		NameDef nameDefC = declC.getNameDef();
+		assertEquals("c", nameDefC.getName());
+	}
+
+
+	@Test
+	void test25() throws PLCCompilerException {
+		String input = """
+			void unaryOps() <:
+				int a = -3;
+				boolean b = !TRUE;
+			:>
+			""";
+		AST ast = getAST(input);
+		Program p = checkProgram(ast, "void", "unaryOps");
+		Block programBlock = p.getBlock();
+		List<BlockElem> blockElemList = programBlock.getElems();
+		assertEquals(2, blockElemList.size());
+		Declaration declA = (Declaration) blockElemList.get(0);
+		NameDef nameDefA = declA.getNameDef();
+		assertEquals("a", nameDefA.getName());
+		Declaration declB = (Declaration) blockElemList.get(1);
+		NameDef nameDefB = declB.getNameDef();
+		assertEquals("b", nameDefB.getName());
+
+	}
 
 }

@@ -32,8 +32,6 @@ public class Parser implements IParser {
 		token = lexer.next();
 	}
 
-
-
 	/* *****************************  MOKSH ***************************** */
 
 	@Override
@@ -440,8 +438,101 @@ public class Parser implements IParser {
 
 	/* *****************************  Daniel  ***************************** */
 
+	// Method to parse the ParamList rule ::=> ParamList ::= ε | NameDef ( , NameDef ) *
+	private List<NameDef> paramList() throws  PLCCompilerException {
+		List<NameDef> params = new ArrayList<>();
+		if (!isKind(Kind.RPAREN)) {
+			params.add(nameDef());
+			while (isKind(Kind.COMMA)) {
+				match(Kind.COMMA);
+				params.add(nameDef());
+			}
+		}
+		return params;
+	}
+
+
+	// Method to parse the NameDef rule ::=> NameDef ::= Type IDENT | Type Dimension IDENT
+	private NameDef nameDef() throws PLCCompilerException {
+		IToken type = type();
+		if (isKind(Kind.LSQUARE)) {
+			Dimension dimension = dimension();
+			IToken ident = match(Kind.IDENT);
+			return new NameDef(token, type, dimension, ident);
+		} else {
+			IToken ident = match(Kind.IDENT);
+			return new NameDef(token, type, null, ident);
+		}
+	}
+
+
+	// Method to parse the Dimension rule ::=> [ Expr , Expr ]
+	private Dimension dimension() throws PLCCompilerException {
+		IToken firstToken = match(Kind.LSQUARE);
+		Expr expr1 = expr();
+		match(Kind.COMMA);
+		Expr expr2 = expr();
+		match(Kind.RSQUARE);
+		return new Dimension(firstToken, expr1, expr2);
+	}
 
 
 
+	// method to parse the Block rule ::=> Block ::= <: (Declaration ; | Statement ;)* :>
+	private Block block() throws SyntaxException, PLCCompilerException {
+		IToken firstToken = match(Kind.BLOCK_OPEN);  // match <:
+		List<Block.BlockElem> blockElems = new ArrayList<>();
+		while (!isKind(Kind.BLOCK_CLOSE) && !isKind(Kind.EOF)) {
+			if (isType()) {
+				Declaration decl = declaration();
+				blockElems.add((Block.BlockElem) decl);
+				match(Kind.SEMI);
+			} else {
+				Statement stmt = statement();
+				blockElems.add((Block.BlockElem) stmt);
+				match(Kind.SEMI);
+			}
+		}
+		match(Kind.BLOCK_CLOSE);  // match :>
+		return new Block(firstToken, blockElems);
+	}
+
+
+	// another helper method (overloading) for block() of type checking
+	private boolean isType() {
+		return isKind(Kind.RES_image) || isKind(Kind.RES_pixel)
+				||  isKind(Kind.RES_int) ||  isKind(Kind.RES_string)
+				|| isKind(Kind.RES_boolean) || isKind(Kind.RES_void);
+	}
+
+
+
+
+	// Method to parse the Declaration rule ::=> Declaration::= NameDef | NameDef = Expr
+	private Declaration declaration() throws SyntaxException, PLCCompilerException {
+		NameDef name = nameDef();
+		if (isKind(Kind.ASSIGN)) {
+			match(Kind.ASSIGN);
+			Expr expr = expr();
+			return new Declaration(name.getTypeToken(), name, expr);
+		} else {
+			return new Declaration(name.getTypeToken(), name, null);
+		}
+	}
+
+
+	// method to parse the LValue rule ::=> LValue ::= IDENT (PixelSelectorIn | ε ) (ChannelSelector | ε )
+	private LValue lvalue() throws LexicalException, PLCCompilerException {
+		IToken ident = match(Kind.IDENT);
+		PixelSelector pixelSelector = null;
+		ChannelSelector channelSelector = null;
+		if (isKind(Kind.LSQUARE)) {
+			pixelSelector = pixelSelector();
+		}
+		if (isKind(Kind.COLON)) {
+			channelSelector = channelSelector();
+		}
+		return new LValue(token, ident, pixelSelector, channelSelector);
+	}
 
 }
