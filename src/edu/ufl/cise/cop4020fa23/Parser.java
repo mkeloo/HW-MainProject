@@ -21,21 +21,282 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Parser implements IParser {
-	
+
+
 	final ILexer lexer;
-	private IToken t;
+	private IToken token;
 
 	public Parser(ILexer lexer) throws LexicalException {
 		super();
 		this.lexer = lexer;
+		token = lexer.next();
 	}
 
+
+
+	/* *****************************  MOKSH ***************************** */
 
 	@Override
-	public AST parse() throws PLCCompilerException {
+	public AST parse() throws SyntaxException, PLCCompilerException {
 		AST e = program();
+		// if there are still tokens remaining at the end, this should result in a SyntaxException
+		if (token.kind() != EOF) {
+			throw new SyntaxException(token.sourceLocation(), "Expected end of file but found " + token.kind());
+		}
 		return e;
 	}
+
+
+// ************************************ START OF Expression Parser Code **************************************** //
+
+	// match the expected kind and move to the next token
+	private IToken match(Kind expectedKind) throws LexicalException, SyntaxException {
+		if (token.kind() == expectedKind) {
+			try {
+				IToken currentToken = token;
+				token = lexer.next();
+				return currentToken;
+			} catch (LexicalException e) {
+				throw new LexicalException(token.sourceLocation(), "Lexical error while trying to match " + expectedKind);
+			}
+		} else {
+			throw new SyntaxException(token.sourceLocation(), "Expected " + expectedKind + " but found " + token.kind());
+		}
+	}
+
+
+	// Expr ::=  ConditionalExpr | LogicalOrExpr
+	private Expr expr() throws PLCCompilerException {
+		if (token.kind() == Kind.QUESTION) {
+			return conditionalExpr();
+		} else {
+			return logicalOrExpr();
+		}
+	}
+
+
+	//	 ConditionalExpr ::=  ?  Expr  : -> Expr  : , Expr
+	private ConditionalExpr conditionalExpr() throws PLCCompilerException {
+		match(Kind.QUESTION);
+		Expr condition = expr();
+		match(Kind.RARROW);
+		Expr trueExpr = expr();
+		match(Kind.COMMA);
+		Expr falseExpr = expr();
+		return new ConditionalExpr(token, condition, trueExpr, falseExpr);
+	}
+
+
+	// LogicalAndExpr ::=  ComparisonExpr ( (   &   |  &&   )  ComparisonExpr)*
+	private Expr logicalAndExpr() throws PLCCompilerException {
+		Expr left = comparisonExpr();
+		while (token.kind() == Kind.BITAND || token.kind() == Kind.AND) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr right = comparisonExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
+
+	// LogicalOrExpr ::=  LogicalAndExpr ( (  |  |  || ) LogicalAndExpr)*
+	private Expr logicalOrExpr() throws PLCCompilerException {
+		Expr left = logicalAndExpr();
+
+		while (token.kind() == Kind.BITOR || token.kind() == Kind.OR) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr right = logicalAndExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
+
+
+	/* *****************************  Daniel  ***************************** */
+
+	// ComparisonExpr ::= PowExpr ( (< | > | == | <= | >=) PowExpr)*
+	private Expr comparisonExpr() throws PLCCompilerException {
+		Expr left = powExpr();
+		while (Arrays.asList(Kind.LT, Kind.GT, Kind.EQ, Kind.LE, Kind.GE).contains(token.kind())) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr right = powExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
+
+	// PowExpr ::= AdditiveExpr ** PowExpr |   AdditiveExpr
+	private Expr powExpr() throws PLCCompilerException {
+		Expr left = additiveExpr();
+		if (token.kind() == Kind.EXP) {
+			IToken opToken = token;
+			match(Kind.EXP);
+			Expr right = powExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
+
+	// AdditiveExpr ::= MultiplicativeExpr ( ( + | -  ) MultiplicativeExpr )*
+	private Expr additiveExpr() throws PLCCompilerException {
+		Expr left = multiplicativeExpr();
+		while (token.kind() == Kind.PLUS || token.kind() == Kind.MINUS) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr right = multiplicativeExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
+
+	// MultiplicativeExpr ::= UnaryExpr (( * |  /  |  % ) UnaryExpr)*
+	private Expr multiplicativeExpr() throws PLCCompilerException {
+		Expr left = unaryExpr();
+		while (token.kind() == Kind.TIMES || token.kind() == Kind.DIV || token.kind() == Kind.MOD) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr right = unaryExpr();
+			left = new BinaryExpr(token, left, opToken, right);
+		}
+		return left;
+	}
+
+	// UnaryExpr ::=  ( ! | - | length | width) UnaryExpr  |  UnaryExprPostfix
+	private Expr unaryExpr() throws PLCCompilerException {
+		if (token.kind() == Kind.BANG || token.kind() == Kind.MINUS ||
+				token.kind() == Kind.RES_width || token.kind() == Kind.RES_height) {
+			IToken opToken = token;
+			match(token.kind());
+			Expr expression = unaryExpr();
+			return new UnaryExpr(token, opToken, expression);
+		} else {
+			return postfixExpr();
+		}
+	}
+
+	/* *****************************  Moksh  ***************************** */
+
+	// UnaryExprPostfix::= PrimaryExpr (PixelSelector | ε ) (ChannelSelector | ε )
+	private Expr postfixExpr() throws PLCCompilerException {
+		Expr expression = primaryExpr();
+		PixelSelector pixelSelector = null;
+		ChannelSelector channelSelector = null;
+
+		// Check for PixelSelector
+		if (token.kind() == Kind.LSQUARE) {
+			pixelSelector = pixelSelector();
+		}
+
+		// Check for ChannelSelector
+		if (token.kind() == Kind.COLON) {
+			channelSelector = channelSelector();
+		}
+
+		// If we encountered either a PixelSelector or ChannelSelector or both,
+		// wrap the original expression in a PostfixExpr.
+		if (pixelSelector != null || channelSelector != null) {
+			return new PostfixExpr(token, expression, pixelSelector, channelSelector);
+		}
+
+		// If no PixelSelector or ChannelSelector was found, just return the primary expression.
+		return expression;
+	}
+
+
+	// PrimaryExpr ::=STRING_LIT | NUM_LIT |  IDENT | ( Expr ) | Z
+	private Expr primaryExpr() throws PLCCompilerException {
+		switch (token.kind()) {
+			case STRING_LIT -> {
+				StringLitExpr stringLit = new StringLitExpr(token);
+				match(STRING_LIT);
+				return stringLit;
+			}
+			case NUM_LIT -> {
+				NumLitExpr numLit = new NumLitExpr(token);
+				match(NUM_LIT);
+				return numLit;
+			}
+			case BOOLEAN_LIT -> {
+				BooleanLitExpr booleanLit = new BooleanLitExpr(token);
+				match(BOOLEAN_LIT);
+				return booleanLit;
+			}
+			case IDENT -> {
+				if ("true".equals(token.text()) || "false".equals(token.text())) {
+					BooleanLitExpr booleanLit = new BooleanLitExpr(token);
+					match(IDENT);
+					return booleanLit;
+				} else {
+					IdentExpr ident = new IdentExpr(token);
+					match(IDENT);
+					return ident;
+				}
+			}
+			case LPAREN -> {
+				match(LPAREN);
+				Expr expression = expr();
+				match(RPAREN);
+				return expression;
+			}
+			case CONST -> {
+				ConstExpr constExpr = new ConstExpr(token);
+				match(CONST);
+				return constExpr;
+			}
+			case LSQUARE -> {
+				return expandedPixelExpr();
+			}
+			default -> throw new SyntaxException(token.sourceLocation(), "Expected token of kind ...");
+		}
+	}
+
+	/* *****************************  Daniel  ***************************** */
+
+	// PixelSelector  ::= [ Expr , Expr ]
+	private PixelSelector pixelSelector() throws PLCCompilerException {
+		match(LSQUARE);
+		Expr xExpr = expr();
+		match(COMMA);
+		Expr yExpr = expr();
+		match(RSQUARE);
+		return new PixelSelector(token, xExpr, yExpr);
+	}
+
+	//	 ChannelSelector ::= : red | : green | : blue
+	private ChannelSelector channelSelector() throws PLCCompilerException {
+		match(COLON);
+		IToken channelToken = token;
+		if (channelToken.kind() == RES_red || channelToken.kind() == RES_green || channelToken.kind() == RES_blue) {
+			match(channelToken.kind());
+			return new ChannelSelector(token, channelToken);
+		} else {
+			throw new SyntaxException(token.sourceLocation(), "Expected red, green, or blue after colon for ChannelSelector.");
+		}
+	}
+
+	// ExpandedPixel ::= [ Expr , Expr , Expr ]
+	private ExpandedPixelExpr expandedPixelExpr() throws PLCCompilerException {
+		match(LSQUARE);
+		Expr e1 = expr();
+		match(COMMA);
+		Expr e2 = expr();
+		match(COMMA);
+		Expr e3 = expr();
+		match(RSQUARE);
+		return new ExpandedPixelExpr(token, e1, e2, e3);
+	}
+// ************************************ START OF Expression Parser Code **************************************** //
+
+
+	/*	*****************************  NEW ASSIGMENT 2 CODE  *****************************  */
+
+
+
+	/* *****************************  MOKSH  ***************************** */
+
+
 
 	private AST program() throws PLCCompilerException {
 		throw new UnsupportedOperationException();
