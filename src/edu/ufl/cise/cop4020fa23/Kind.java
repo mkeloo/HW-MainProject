@@ -16,7 +16,6 @@ public enum Kind {
 	IDENT,
 	NUM_LIT,
 	STRING_LIT,
-	FLOAT_LIT,
 	RES_image,
 	RES_pixel,
 	RES_int,
@@ -60,7 +59,6 @@ public enum Kind {
 	TIMES, // *
 	EXP, // **
 	DIV, // /
-	DOT, // .
 	MOD, // %
 	BLOCK_OPEN, // <:
 	BLOCK_CLOSE, // :>
