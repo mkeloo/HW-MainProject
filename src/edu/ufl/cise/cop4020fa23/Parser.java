@@ -1,11 +1,11 @@
 /*Copyright 2023 by Beverly A Sanders
- * 
- * This code is provided for solely for use of students in COP4020 Programming Language Concepts at the 
- * University of Florida during the fall semester 2023 as part of the course project.  
- * 
- * No other use is authorized. 
- * 
- * This code may not be posted on a public web site either during or after the course.  
+ *
+ * This code is provided for solely for use of students in COP4020 Programming Language Concepts at the
+ * University of Florida during the fall semester 2023 as part of the course project.
+ *
+ * No other use is authorized.
+ *
+ * This code may not be posted on a public web site either during or after the course.
  */
 package edu.ufl.cise.cop4020fa23;
 
@@ -20,8 +20,26 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class Parser implements IParser {
 
+import edu.ufl.cise.cop4020fa23.ast.AST;
+import edu.ufl.cise.cop4020fa23.ast.BinaryExpr;
+import edu.ufl.cise.cop4020fa23.ast.ChannelSelector;
+import edu.ufl.cise.cop4020fa23.ast.ConditionalExpr;
+import edu.ufl.cise.cop4020fa23.ast.ConstExpr;
+import edu.ufl.cise.cop4020fa23.ast.ExpandedPixelExpr;
+import edu.ufl.cise.cop4020fa23.ast.Expr;
+import edu.ufl.cise.cop4020fa23.ast.IdentExpr;
+import edu.ufl.cise.cop4020fa23.ast.NumLitExpr;
+import edu.ufl.cise.cop4020fa23.ast.BooleanLitExpr;
+import edu.ufl.cise.cop4020fa23.ast.PixelSelector;
+import edu.ufl.cise.cop4020fa23.ast.PostfixExpr;
+import edu.ufl.cise.cop4020fa23.ast.StringLitExpr;
+import edu.ufl.cise.cop4020fa23.ast.UnaryExpr;
+
+
+
+
+public class Parser implements IParser {
 
 	final ILexer lexer;
 	private IToken token;
@@ -31,6 +49,8 @@ public class Parser implements IParser {
 		this.lexer = lexer;
 		token = lexer.next();
 	}
+
+
 
 	/* *****************************  MOKSH ***************************** */
 
@@ -49,13 +69,14 @@ public class Parser implements IParser {
 
 	// match the expected kind and move to the next token
 	private IToken match(Kind expectedKind) throws LexicalException, SyntaxException {
+//		System.out.println("Matching " + expectedKind + ", current token is " + token.kind()); // Debug print
 		if (token.kind() == expectedKind) {
 			try {
 				IToken currentToken = token;
 				token = lexer.next();
 				return currentToken;
 			} catch (LexicalException e) {
-				throw new LexicalException(token.sourceLocation(), "Lexical error while trying to match " + expectedKind);
+				throw new LexicalException(token.sourceLocation(), "Lexical error while trying to match " + expectedKind + ": " + e.getMessage());
 			}
 		} else {
 			throw new SyntaxException(token.sourceLocation(), "Expected " + expectedKind + " but found " + token.kind());
@@ -63,8 +84,9 @@ public class Parser implements IParser {
 	}
 
 
+
 	// Expr ::=  ConditionalExpr | LogicalOrExpr
-	private Expr expr() throws PLCCompilerException {
+	private Expr expr() throws SyntaxException, PLCCompilerException {
 		if (token.kind() == Kind.QUESTION) {
 			return conditionalExpr();
 		} else {
@@ -74,7 +96,7 @@ public class Parser implements IParser {
 
 
 	//	 ConditionalExpr ::=  ?  Expr  : -> Expr  : , Expr
-	private ConditionalExpr conditionalExpr() throws PLCCompilerException {
+	private ConditionalExpr conditionalExpr() throws SyntaxException, PLCCompilerException {
 		match(Kind.QUESTION);
 		Expr condition = expr();
 		match(Kind.RARROW);
@@ -85,8 +107,9 @@ public class Parser implements IParser {
 	}
 
 
+
 	// LogicalAndExpr ::=  ComparisonExpr ( (   &   |  &&   )  ComparisonExpr)*
-	private Expr logicalAndExpr() throws PLCCompilerException {
+	private Expr logicalAndExpr() throws SyntaxException, PLCCompilerException {
 		Expr left = comparisonExpr();
 		while (token.kind() == Kind.BITAND || token.kind() == Kind.AND) {
 			IToken opToken = token;
@@ -98,7 +121,7 @@ public class Parser implements IParser {
 	}
 
 	// LogicalOrExpr ::=  LogicalAndExpr ( (  |  |  || ) LogicalAndExpr)*
-	private Expr logicalOrExpr() throws PLCCompilerException {
+	private Expr logicalOrExpr() throws SyntaxException, PLCCompilerException {
 		Expr left = logicalAndExpr();
 
 		while (token.kind() == Kind.BITOR || token.kind() == Kind.OR) {
@@ -114,7 +137,7 @@ public class Parser implements IParser {
 	/* *****************************  Daniel  ***************************** */
 
 	// ComparisonExpr ::= PowExpr ( (< | > | == | <= | >=) PowExpr)*
-	private Expr comparisonExpr() throws PLCCompilerException {
+	private Expr comparisonExpr() throws SyntaxException, PLCCompilerException {
 		Expr left = powExpr();
 		while (Arrays.asList(Kind.LT, Kind.GT, Kind.EQ, Kind.LE, Kind.GE).contains(token.kind())) {
 			IToken opToken = token;
@@ -126,7 +149,7 @@ public class Parser implements IParser {
 	}
 
 	// PowExpr ::= AdditiveExpr ** PowExpr |   AdditiveExpr
-	private Expr powExpr() throws PLCCompilerException {
+	private Expr powExpr() throws SyntaxException, PLCCompilerException {
 		Expr left = additiveExpr();
 		if (token.kind() == Kind.EXP) {
 			IToken opToken = token;
@@ -138,7 +161,7 @@ public class Parser implements IParser {
 	}
 
 	// AdditiveExpr ::= MultiplicativeExpr ( ( + | -  ) MultiplicativeExpr )*
-	private Expr additiveExpr() throws PLCCompilerException {
+	private Expr additiveExpr() throws SyntaxException, PLCCompilerException {
 		Expr left = multiplicativeExpr();
 		while (token.kind() == Kind.PLUS || token.kind() == Kind.MINUS) {
 			IToken opToken = token;
@@ -150,7 +173,7 @@ public class Parser implements IParser {
 	}
 
 	// MultiplicativeExpr ::= UnaryExpr (( * |  /  |  % ) UnaryExpr)*
-	private Expr multiplicativeExpr() throws PLCCompilerException {
+	private Expr multiplicativeExpr() throws SyntaxException, PLCCompilerException {
 		Expr left = unaryExpr();
 		while (token.kind() == Kind.TIMES || token.kind() == Kind.DIV || token.kind() == Kind.MOD) {
 			IToken opToken = token;
@@ -162,7 +185,7 @@ public class Parser implements IParser {
 	}
 
 	// UnaryExpr ::=  ( ! | - | length | width) UnaryExpr  |  UnaryExprPostfix
-	private Expr unaryExpr() throws PLCCompilerException {
+	private Expr unaryExpr() throws SyntaxException, PLCCompilerException {
 		if (token.kind() == Kind.BANG || token.kind() == Kind.MINUS ||
 				token.kind() == Kind.RES_width || token.kind() == Kind.RES_height) {
 			IToken opToken = token;
@@ -177,7 +200,7 @@ public class Parser implements IParser {
 	/* *****************************  Moksh  ***************************** */
 
 	// UnaryExprPostfix::= PrimaryExpr (PixelSelector | ε ) (ChannelSelector | ε )
-	private Expr postfixExpr() throws PLCCompilerException {
+	private Expr postfixExpr() throws SyntaxException, PLCCompilerException {
 		Expr expression = primaryExpr();
 		PixelSelector pixelSelector = null;
 		ChannelSelector channelSelector = null;
@@ -204,7 +227,7 @@ public class Parser implements IParser {
 
 
 	// PrimaryExpr ::=STRING_LIT | NUM_LIT |  IDENT | ( Expr ) | Z
-	private Expr primaryExpr() throws PLCCompilerException {
+	private Expr primaryExpr() throws SyntaxException, PLCCompilerException {
 		switch (token.kind()) {
 			case STRING_LIT -> {
 				StringLitExpr stringLit = new StringLitExpr(token);
@@ -253,7 +276,7 @@ public class Parser implements IParser {
 	/* *****************************  Daniel  ***************************** */
 
 	// PixelSelector  ::= [ Expr , Expr ]
-	private PixelSelector pixelSelector() throws PLCCompilerException {
+	private PixelSelector pixelSelector() throws SyntaxException, PLCCompilerException {
 		match(LSQUARE);
 		Expr xExpr = expr();
 		match(COMMA);
@@ -263,7 +286,7 @@ public class Parser implements IParser {
 	}
 
 	//	 ChannelSelector ::= : red | : green | : blue
-	private ChannelSelector channelSelector() throws PLCCompilerException {
+	private ChannelSelector channelSelector() throws SyntaxException, PLCCompilerException {
 		match(COLON);
 		IToken channelToken = token;
 		if (channelToken.kind() == RES_red || channelToken.kind() == RES_green || channelToken.kind() == RES_blue) {
@@ -275,16 +298,19 @@ public class Parser implements IParser {
 	}
 
 	// ExpandedPixel ::= [ Expr , Expr , Expr ]
-	private ExpandedPixelExpr expandedPixelExpr() throws PLCCompilerException {
+	private ExpandedPixelExpr expandedPixelExpr() throws SyntaxException, PLCCompilerException {
 		match(LSQUARE);
 		Expr e1 = expr();
 		match(COMMA);
 		Expr e2 = expr();
 		match(COMMA);
 		Expr e3 = expr();
-		match(RSQUARE);
+		if (isKind(RSQUARE)) {
+			match(RSQUARE);
+		}
 		return new ExpandedPixelExpr(token, e1, e2, e3);
 	}
+
 // ************************************ START OF Expression Parser Code **************************************** //
 
 
@@ -332,7 +358,7 @@ public class Parser implements IParser {
 
 
 	// Method to parse the Program rule ::=> Program::= Type IDENT ( ParamList ) Block
-	public AST program() throws  PLCCompilerException {
+	public AST program() throws SyntaxException, PLCCompilerException {
 		if (isType(token)) {
 			IToken type = type();
 			IToken ident = match(Kind.IDENT);
@@ -393,7 +419,7 @@ public class Parser implements IParser {
 			return ifStatement();
 		}
 		else {
-			throw new PLCCompilerException("Unexpected token in statement: " + token.kind());
+			throw new SyntaxException("Unexpected token in statement: " + token.kind());
 		}
 	}
 
@@ -436,6 +462,7 @@ public class Parser implements IParser {
 
 
 
+
 	/* *****************************  Daniel  ***************************** */
 
 	// Method to parse the ParamList rule ::=> ParamList ::= ε | NameDef ( , NameDef ) *
@@ -453,27 +480,26 @@ public class Parser implements IParser {
 
 
 	// Method to parse the NameDef rule ::=> NameDef ::= Type IDENT | Type Dimension IDENT
+
 	private NameDef nameDef() throws PLCCompilerException {
 		IToken type = type();
+		Dimension dimension = null;
 		if (isKind(Kind.LSQUARE)) {
-			Dimension dimension = dimension();
-			IToken ident = match(Kind.IDENT);
-			return new NameDef(token, type, dimension, ident);
-		} else {
-			IToken ident = match(Kind.IDENT);
-			return new NameDef(token, type, null, ident);
+			dimension = dimension();
 		}
+		IToken ident = match(Kind.IDENT);
+		return new NameDef(token, type, dimension, ident);
 	}
 
 
-	// Method to parse the Dimension rule ::=> [ Expr , Expr ]
-	private Dimension dimension() throws PLCCompilerException {
-		IToken firstToken = match(Kind.LSQUARE);
-		Expr expr1 = expr();
-		match(Kind.COMMA);
-		Expr expr2 = expr();
-		match(Kind.RSQUARE);
-		return new Dimension(firstToken, expr1, expr2);
+	// Method to parse the Dimension rule ::=> Dimension ::= [ Expr , Expr ]
+	private Dimension dimension() throws SyntaxException, PLCCompilerException {
+		match(LSQUARE);
+		Expr width = expr();
+		match(COMMA);
+		Expr height = expr();
+		match(RSQUARE);
+		return new Dimension(token, width, height);
 	}
 
 
@@ -511,6 +537,14 @@ public class Parser implements IParser {
 	// Method to parse the Declaration rule ::=> Declaration::= NameDef | NameDef = Expr
 	private Declaration declaration() throws SyntaxException, PLCCompilerException {
 		NameDef name = nameDef();
+
+		if (name.getType() == Type.IMAGE && name.getDimension() == null && isKind(Kind.LSQUARE)) {
+			Dimension dimension = dimension();
+			IToken typeToken = name.getTypeToken();
+			IToken identToken = name.getIdentToken();
+			name = new NameDef(token, typeToken, dimension, identToken);
+		}
+
 		if (isKind(Kind.ASSIGN)) {
 			match(Kind.ASSIGN);
 			Expr expr = expr();
@@ -519,6 +553,10 @@ public class Parser implements IParser {
 			return new Declaration(name.getTypeToken(), name, null);
 		}
 	}
+
+
+
+
 
 
 	// method to parse the LValue rule ::=> LValue ::= IDENT (PixelSelectorIn | ε ) (ChannelSelector | ε )
@@ -534,5 +572,6 @@ public class Parser implements IParser {
 		}
 		return new LValue(token, ident, pixelSelector, channelSelector);
 	}
+
 
 }

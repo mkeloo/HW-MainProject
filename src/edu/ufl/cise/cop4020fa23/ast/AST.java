@@ -12,6 +12,7 @@ package edu.ufl.cise.cop4020fa23.ast;
 import java.util.Objects;
 
 import edu.ufl.cise.cop4020fa23.IToken;
+import edu.ufl.cise.cop4020fa23.TypeCheckVisitor;
 import edu.ufl.cise.cop4020fa23.exceptions.PLCCompilerException;
 
 public abstract class AST {
@@ -51,5 +52,6 @@ public abstract class AST {
 		AST other = (AST) obj;
 		return Objects.equals(firstToken, other.firstToken);
 	}
+
 
 }
