@@ -1420,11 +1420,126 @@ class TypeCheckTest_starter {
 
 	/* ======================= DANIEL ======================= */
 
+	@Test
+	void test30() throws PLCCompilerException {
+		String input = """
+		int f(string x) <:
+			^x;
+		:>
+		""";
+		TypeCheckException e = assertThrows(TypeCheckException.class, () -> {
+			getDecoratedAST(input);
+		});
+		show("Error message from unitTestIncorrectParameterType: " + e.getMessage());
+	}
 
+	@Test
+	void test31() throws PLCCompilerException {
+		String input = """
+        int f() <:
+            int a = 5;
+            int b = 4;
+            int result = a * b;  ## Valid binary expression, multiplying two integers
+            ^result;
+        :>
+        """;
+		AST ast = getDecoratedAST(input);
+		Program program = checkProgram(ast, Type.INT, "f");
+		Block programBlock = program.getBlock();
+		List<BlockElem> blockElems = programBlock.getElems();
+		assertEquals(4, blockElems.size(), "program should contain four statements");
+		Declaration declA = checkDec(blockElems.get(0));
+		NameDef nameDefA = declA.getNameDef();
+		checkNameDef(nameDefA, Type.INT, "a");
+		Expr initA = declA.getInitializer();
+		checkNumLitExpr(initA, 5);
+		Declaration declB = checkDec(blockElems.get(1));
+		NameDef nameDefB = declB.getNameDef();
+		checkNameDef(nameDefB, Type.INT, "b");
+		Expr initB = declB.getInitializer();
+		checkNumLitExpr(initB, 4);
+		Declaration declResult = checkDec(blockElems.get(2));
+		NameDef nameDefResult = declResult.getNameDef();
+		checkNameDef(nameDefResult, Type.INT, "result");
+		Expr initResult = declResult.getInitializer();
+		BinaryExpr multExpr = checkBinaryExpr(initResult, Kind.TIMES, Type.INT);
+		Expr leftExpr = multExpr.getLeftExpr();
+		checkIdentExpr(leftExpr, "a", Type.INT);
+		Expr rightExpr = multExpr.getRightExpr();
+		checkIdentExpr(rightExpr, "b", Type.INT);
+	}
 
+	@Test
+	void test32() throws PLCCompilerException {
+		String input = """
+        int f() <:
+            ^"hello";  ## Return type should be int, not string
+        :>
+        """;
+		TypeCheckException e = assertThrows(TypeCheckException.class, () -> {
+			getDecoratedAST(input);
+		});
+		show("Error message from unitTestIncorrectReturnType: " + e.getMessage());
+	}
 
+	@Test
+	void test33() throws PLCCompilerException {
+		String input = """
+        int f() <:
+            int m = 15;
+            int n = 7;
+            int diff = m - n;  ## Valid binary expression, subtracting two integers
+            ^diff;
+        :>
+        """;
+		AST ast = getDecoratedAST(input);
+		Program program = checkProgram(ast, Type.INT, "f");
 
+		Block programBlock = program.getBlock();
+		List<BlockElem> blockElems = programBlock.getElems();
+		assertEquals(4, blockElems.size(), "program should contain four statements");
+		Declaration declM = checkDec(blockElems.get(0));
+		NameDef nameDefM = declM.getNameDef();
+		checkNameDef(nameDefM, Type.INT, "m");
+		Expr initM = declM.getInitializer();
+		checkNumLitExpr(initM, 15);
+		Declaration declN = checkDec(blockElems.get(1));
+		NameDef nameDefN = declN.getNameDef();
+		checkNameDef(nameDefN, Type.INT, "n");
+		Expr initN = declN.getInitializer();
+		checkNumLitExpr(initN, 7);
+		Declaration declDiff = checkDec(blockElems.get(2));
+		NameDef nameDefDiff = declDiff.getNameDef();
+		checkNameDef(nameDefDiff, Type.INT, "diff");
+		Expr initDiff = declDiff.getInitializer();
+		BinaryExpr subExpr = checkBinaryExpr(initDiff, Kind.MINUS, Type.INT);
+		Expr leftExpr = subExpr.getLeftExpr();
+		checkIdentExpr(leftExpr, "m", Type.INT);
+		Expr rightExpr = subExpr.getRightExpr();
+		checkIdentExpr(rightExpr, "n", Type.INT);
 
+	}
 
+	@Test
+	void test34() throws PLCCompilerException {
+		String input = """
+        int f() <:
+            int x = 10;
+            write x;  ## x is defined
+            ^x;
+        :>
+        """;
+		AST ast = getDecoratedAST(input);
+		Program program = checkProgram(ast, Type.INT, "f");
+
+		Block programBlock = program.getBlock();
+		List<BlockElem> blockElems = programBlock.getElems();
+		assertEquals(3, blockElems.size(), "program should contain three statements");
+		Declaration declX = checkDec(blockElems.get(0));
+		NameDef nameDefX = declX.getNameDef();
+		checkNameDef(nameDefX, Type.INT, "x");
+		Expr initX = declX.getInitializer();
+		checkNumLitExpr(initX, 10);
+	}
 
 }
